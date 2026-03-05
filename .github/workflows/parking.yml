@@ -35,6 +35,8 @@ jobs:
           node-version: '20'
 
       - name: Start parking session
+        env:
+          AIRGARAGE_SESSION_ID: ${{ secrets.AIRGARAGE_SESSION_ID }}
         run: node start_parking.js
 
       - name: Commit rental UUID
