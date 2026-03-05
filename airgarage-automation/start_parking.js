@@ -1,58 +1,60 @@
-const { chromium } = require('playwright');
+const https = require('https');
+const fs = require('fs');
 
 const PHONE = '7036789502';
-const PIN = '449189';
-const PARK_URL = `https://pay.airgarage.com/spots/LWxrQENB2n4SxkkbTvP3JL?source=webpay3&phone=${PHONE}&pin=${PIN}&phone_country_code=%2B1&rental_type=hourly`;
+const SPOT_ID = 1229;
+const PLATE = '8GAC911';
+const STATE = 'CA';
 
-(async () => {
-    const browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage();
+const body = JSON.stringify({
+      source: 'webpay3',
+      cars_list: [{ plate: PLATE, state: STATE, country: 'US' }],
+      username: '+1' + PHONE,
+      phone_country_code: '+1',
+      phone: PHONE,
+      token: null,
+      start_date: null,
+      end_date: null,
+      spot: SPOT_ID,
+      promo: null,
+      short_term: true,
+      rental_type: 'hourly',
+      rate_code: null,
+      ref: null
+});
 
-   console.log('Navigating to AirGarage parking page...');
-    await page.goto(PARK_URL);
-    await page.waitForTimeout(2000);
+const options = {
+      hostname: 'api.pay.airgarage.com',
+      path: '/api/slots',
+      method: 'POST',
+      headers: {
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(body),
+              'Origin': 'https://pay.airgarage.com',
+              'Referer': 'https://pay.airgarage.com/'
+      }
+};
 
-   const phoneInput = page.locator('input[type="tel"]');
-    if (await phoneInput.isVisible()) {
-          console.log('Entering phone number...');
-          await phoneInput.fill(PHONE);
-          await page.locator('button:has-text("Continue")').click();
-          await page.waitForTimeout(2000);
-    }
+const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+              console.log('Status:', res.statusCode);
+              if (res.statusCode === 200 || res.statusCode === 201) {
+                        const json = JSON.parse(data);
+                        console.log('Parking session started! UUID:', json.uuid);
+                        fs.writeFileSync('rental_uuid.txt', json.uuid);
+              } else {
+                        console.error('Failed to start parking:', data);
+                        process.exit(1);
+              }
+      });
+});
 
-   const verificationInputs = page.locator('input[inputmode="numeric"]');
-    if (await verificationInputs.first().isVisible()) {
-          console.log('Entering verification PIN...');
-          const code = PIN;
-          const inputs = await verificationInputs.all();
-          for (let i = 0; i < inputs.length && i < code.length; i++) {
-                  await inputs[i].fill(code[i]);
-          }
-          await page.locator('button:has-text("Log in")').click();
-          await page.waitForTimeout(2000);
-    }
+req.on('error', (e) => {
+      console.error('Request error:', e);
+      process.exit(1);
+});
 
-   const startButton = page.locator('button:has-text("Start Parking")');
-    if (await startButton.isVisible()) {
-          console.log('Starting parking session...');
-          await startButton.click();
-          await page.waitForTimeout(3000);
-          const endButton = page.locator('button:has-text("End Parking")');
-          if (await endButton.isVisible()) {
-                  console.log('Parking session started successfully!');
-          } else {
-                  console.error('Start Parking may have failed.');
-                  process.exit(1);
-          }
-    } else {
-          const endButton = page.locator('button:has-text("End Parking")');
-          if (await endButton.isVisible()) {
-                  console.log('A parking session is already active.');
-          } else {
-                  console.error('Could not find Start Parking button.');
-                  process.exit(1);
-          }
-    }
-
-   await browser.close();
-})();
+req.write(body);
+req.end();
