@@ -1,0 +1,59 @@
+name: AirGarage Parking Automation
+
+on:
+  schedule:
+    # Start parking at 7:15 AM Pacific Time (UTC-7 in summer = 14:15 UTC, UTC-8 in winter = 15:15 UTC)
+    # Using 15:15 UTC (works for PST / winter). Update to 14:15 for PDT / summer.
+    - cron: '15 15 * * 1-5'  # Start: 7:15 AM PST, Mon-Fri
+    - cron: '13 17 * * 1-5'  # End:   9:13 AM PST, Mon-Fri
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to run manually'
+        required: true
+        default: 'start'
+        type: choice
+        options:
+          - start
+          - end
+
+jobs:
+  start-parking:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'start' || github.event.schedule == '15 15 * * 1-5'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          npm install playwright
+          npx playwright install chromium --with-deps
+
+      - name: Start parking session
+        run: node start_parking.js
+
+  end-parking:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'end' || github.event.schedule == '13 17 * * 1-5'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          npm install playwright
+          npx playwright install chromium --with-deps
+
+      - name: End parking session
+        run: node end_parking.js
