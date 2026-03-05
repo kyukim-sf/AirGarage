@@ -1,50 +1,75 @@
-const { chromium } = require('playwright');
+const https = require('https');
 
 const PHONE = '7036789502';
-const PIN = '449189';
-const PARK_URL = `https://pay.airgarage.com/spots/LWxrQENB2n4SxkkbTvP3JL?source=webpay3&phone=${PHONE}&pin=${PIN}&phone_country_code=%2B1&rental_type=hourly`;
+
+function getActiveRental() {
+    return new Promise((resolve, reject) => {
+          const options = {
+                  hostname: 'api.pay.airgarage.com',
+                  path: '/api/slots?phone=' + PHONE + '&active=true',
+                  method: 'GET',
+                  headers: {
+                            'Origin': 'https://pay.airgarage.com',
+                            'Referer': 'https://pay.airgarage.com/'
+                  }
+          };
+          const req = https.request(options, (res) => {
+                  let data = '';
+                  res.on('data', chunk => data += chunk);
+                  res.on('end', () => {
+                            console.log('GET active rental status:', res.statusCode, data);
+                            try {
+                                        const json = JSON.parse(data);
+                                        const rental = Array.isArray(json) ? json[0] : json;
+                                        resolve(rental && rental.uuid ? rental.uuid : null);
+                            } catch(e) { resolve(null); }
+                  });
+          });
+          req.on('error', reject);
+          req.end();
+    });
+}
+
+function endRental(uuid) {
+    return new Promise((resolve, reject) => {
+          const body = '{}';
+          const options = {
+                  hostname: 'api.pay.airgarage.com',
+                  path: '/api/slots/' + uuid + '/',
+                  method: 'DELETE',
+                  headers: {
+                            'Content-Type': 'application/json',
+                            'Content-Length': Buffer.byteLength(body),
+                            'Origin': 'https://pay.airgarage.com',
+                            'Referer': 'https://pay.airgarage.com/'
+                  }
+          };
+          const req = https.request(options, (res) => {
+                  let data = '';
+                  res.on('data', chunk => data += chunk);
+                  res.on('end', () => {
+                            console.log('DELETE status:', res.statusCode, data);
+                            if (res.statusCode === 200 || res.statusCode === 204) {
+                                        console.log('Parking session ended!');
+                                        resolve();
+                            } else {
+                                        reject(new Error('Status ' + res.statusCode + ': ' + data));
+                            }
+                  });
+          });
+          req.on('error', reject);
+          req.write(body);
+          req.end();
+    });
+}
 
 (async () => {
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
-
-  console.log('Navigating to AirGarage to end session...');
-  await page.goto(PARK_URL);
-  await page.waitForTimeout(2000);
-
-  // Step 1: Enter phone number if prompted
-  const phoneInput = page.locator('input[type="tel"]');
-  if (await phoneInput.isVisible()) {
-    console.log('Entering phone number...');
-    await phoneInput.fill(PHONE);
-    await page.locator('button:has-text("Continue")').click();
-    await page.waitForTimeout(2000);
-  }
-
-  // Step 2: Enter verification code if prompted
-  const verificationInputs = page.locator('input[inputmode="numeric"]');
-  if (await verificationInputs.first().isVisible()) {
-    console.log('Entering verification PIN...');
-    const code = PIN;
-    const inputs = await verificationInputs.all();
-    for (let i = 0; i < inputs.length && i < code.length; i++) {
-      await inputs[i].fill(code[i]);
+    console.log('Looking up active rental...');
+    const uuid = await getActiveRental();
+    if (!uuid) {
+          console.log('No active rental found — nothing to end.');
+          process.exit(0);
     }
-    await page.locator('button:has-text("Log in")').click();
-    await page.waitForTimeout(2000);
-  }
-
-  // Step 3: Click End Parking
-  const endButton = page.locator('button:has-text("End Parking")');
-  if (await endButton.isVisible()) {
-    console.log('Ending parking session...');
-    await endButton.click();
-    await page.waitForTimeout(3000);
-    console.log('✅ Parking session ended successfully!');
-    console.log('Current URL:', page.url());
-  } else {
-    console.log('ℹ️ No active parking session found — nothing to end.');
-  }
-
-  await browser.close();
+    console.log('Found active rental UUID:', uuid);
+    await endRental(uuid);
 })();
