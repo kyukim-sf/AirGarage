@@ -1,0 +1,12 @@
+{
+  "name": "airgarage-automation",
+  "version": "1.0.0",
+  "description": "Automated AirGarage parking session management",
+  "scripts": {
+    "start": "node start_parking.js",
+    "end": "node end_parking.js"
+  },
+  "dependencies": {
+    "playwright": "^1.40.0"
+  }
+}
