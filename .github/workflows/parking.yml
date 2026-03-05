@@ -35,8 +35,8 @@ jobs:
         run: |
           git config user.email "action@github.com"
           git config user.name "GitHub Action"
-          git add rental_uuid.txt
-          git commit -m "Save rental UUID [skip ci]"
+          git add -f rental_uuid.txt
+          git diff --staged --quiet || git commit -m "Save rental UUID [skip ci]"
           git push
 
   end-parking:
