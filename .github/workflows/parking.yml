@@ -29,10 +29,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install dependencies
-        run: |
-          npm install playwright
-          npx playwright install chromium --with-deps
       - name: Start parking session
         run: node start_parking.js
 
@@ -49,9 +45,5 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install dependencies
-        run: |
-          npm install playwright
-          npx playwright install chromium --with-deps
       - name: End parking session
         run: node end_parking.js
