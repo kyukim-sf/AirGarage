@@ -31,12 +31,13 @@ jobs:
           node-version: '20'
       - name: Start parking session
         run: node start_parking.js
-      - name: Save rental UUID
-        uses: actions/upload-artifact@v4
-        with:
-          name: rental-uuid
-          path: airgarage-automation/rental_uuid.txt
-          retention-days: 1
+      - name: Commit rental UUID
+        run: |
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+          git add rental_uuid.txt
+          git commit -m "Save rental UUID [skip ci]"
+          git push
 
   end-parking:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'end' || github.event.schedule == '13 17 * * 1-5'
@@ -51,10 +52,5 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Download rental UUID
-        uses: actions/download-artifact@v4
-        with:
-          name: rental-uuid
-          path: airgarage-automation
       - name: End parking session
         run: node end_parking.js
