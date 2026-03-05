@@ -20,9 +20,7 @@ permissions:
 
 jobs:
   start-parking:
-    if: |
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'start') ||
-      github.event.schedule == '15 15 * * 1-5'
+    if: (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'start') || github.event.schedule == '15 15 * * 1-5'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -45,12 +43,10 @@ jobs:
           git config user.name "GitHub Action"
           git add -f rental_uuid.txt
           git diff --staged --quiet || git commit -m "Save rental UUID [skip ci]"
-          git push origin HEAD:${GITHUB_REF_NAME}
+          git push
 
   end-parking:
-    if: |
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'end') ||
-      github.event.schedule == '13 17 * * 1-5'
+    if: (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'end') || github.event.schedule == '13 17 * * 1-5'
     runs-on: ubuntu-latest
     defaults:
       run:
