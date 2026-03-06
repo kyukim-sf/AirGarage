@@ -63,4 +63,6 @@ jobs:
           node-version: '20'
 
       - name: End parking session
+        env:
+          AIRGARAGE_SESSION_ID: ${{ secrets.AIRGARAGE_SESSION_ID }}
         run: node end_parking.js
