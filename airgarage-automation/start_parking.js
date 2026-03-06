@@ -3,7 +3,7 @@ const fs = require('fs');
 
 const SESSION_ID = process.env.AIRGARAGE_SESSION_ID;
 if (!SESSION_ID) {
-  console.error('Missing AIRGARAGE_SESSION_ID environment variable');
+  console.error('Missing AIRGARAGE_SESSION_ID env var');
   process.exit(1);
 }
 
@@ -43,9 +43,9 @@ const req = https.request(options, (res) => {
   res.on('end', () => {
     console.log('Status:', res.statusCode);
     if (res.statusCode === 200 || res.statusCode === 201) {
-      const json = JSON.parse(data);
-      console.log('Parking started! UUID:', json.uuid);
-      fs.writeFileSync('rental_uuid.txt', json.uuid);
+      const rental = JSON.parse(data);
+      console.log('Parking started! UUID:', rental.uuid);
+      fs.writeFileSync('rental_uuid.txt', rental.uuid);
     } else {
       console.error('Failed to start parking:', data);
       process.exit(1);
