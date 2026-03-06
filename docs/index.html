@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AirGarage Automation Setup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --border: #1e1e2e;
+    --border-bright: #2e2e4e;
+    --accent: #f0c040;
+    --accent2: #40c0f0;
+    --text: #e8e8f0;
+    --muted: #6868a0;
+    --success: #40f080;
+    --error: #f04060;
+    --step-w: 680px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 16px 80px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(240,192,64,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(240,192,64,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; width: 100%; max-width: var(--step-w); }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .header .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 4px 12px;
+    margin-bottom: 20px;
+  }
+  .header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+  .header h1 span { color: var(--accent); }
+  .header p {
+    font-size: 13px;
+    color: var(--muted);
+    max-width: 480px;
+    margin: 0 auto;
+    line-height: 1.7;
+  }
+
+  /* Progress bar */
+  .progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 40px;
+  }
+  .progress-step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+  }
+  .progress-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    width: 100%;
+    height: 1px;
+    background: var(--border-bright);
+    transition: background 0.3s;
+  }
+  .progress-step.done:not(:last-child)::after { background: var(--accent); }
+  .p-dot {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    border: 1px solid var(--border-bright);
+    background: var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+    transition: all 0.3s;
+    position: relative;
+    z-index: 1;
+  }
+  .progress-step.active .p-dot {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--bg);
+  }
+  .progress-step.done .p-dot {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--bg);
+  }
+  .p-label {
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: center;
+    white-space: nowrap;
+  }
+  .progress-step.active .p-label { color: var(--accent); }
+
+  /* Step cards */
+  .step {
+    display: none;
+    animation: fadeUp 0.35s ease;
+  }
+  .step.active { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 32px;
+    margin-bottom: 16px;
+  }
+
+  .step-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .step-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 40px;
+    font-weight: 800;
+    color: var(--border-bright);
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .step-header-text h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .step-header-text p {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* Form elements */
+  .field { margin-bottom: 20px; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 8px;
+  }
+  .field .hint {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+  .field input, .field select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border-bright);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    appearance: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field input::placeholder { color: var(--muted); }
+
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .field-row-3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; }
+
+  /* Instructions */
+  .instr-list { list-style: none; counter-reset: step-counter; }
+  .instr-list li {
+    counter-increment: step-counter;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  .instr-list li::before {
+    content: counter(step-counter);
+    min-width: 22px; height: 22px;
+    background: var(--accent);
+    color: var(--bg);
+    font-weight: 700;
+    font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .instr-list li code {
+    background: var(--bg);
+    border: 1px solid var(--border-bright);
+    padding: 1px 6px;
+    font-size: 11px;
+    color: var(--accent);
+  }
+
+  /* Code block */
+  .code-block {
+    background: var(--bg);
+    border: 1px solid var(--border-bright);
+    border-left: 3px solid var(--accent);
+    padding: 14px 16px;
+    font-size: 12px;
+    color: var(--accent2);
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 12px 0;
+    line-height: 1.6;
+    position: relative;
+  }
+
+  /* Secret rows */
+  .secret-row {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--border-bright);
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .secret-key {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--accent);
+    background: rgba(240,192,64,0.08);
+    padding: 10px 14px;
+    min-width: 200px;
+    display: flex;
+    align-items: center;
+    border-right: 1px solid var(--border-bright);
+    flex-shrink: 0;
+  }
+  .secret-val {
+    font-size: 12px;
+    color: var(--text);
+    padding: 10px 14px;
+    flex: 1;
+    word-break: break-all;
+    display: flex;
+    align-items: center;
+  }
+  .secret-copy {
+    background: var(--border);
+    border: none;
+    border-left: 1px solid var(--border-bright);
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 0 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .secret-copy:hover { background: var(--accent); color: var(--bg); }
+  .secret-copy.copied { background: var(--success); color: var(--bg); }
+
+  /* Callout */
+  .callout {
+    border: 1px solid var(--border-bright);
+    border-left: 3px solid var(--accent2);
+    padding: 14px 16px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin: 16px 0;
+  }
+  .callout strong { color: var(--accent2); }
+  .callout.warn { border-left-color: var(--accent); }
+  .callout.warn strong { color: var(--accent); }
+
+  /* Buttons */
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+  }
+  .btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 12px 28px;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+  }
+  .btn-primary:hover { background: #ffd050; }
+  .btn-secondary {
+    background: transparent;
+    border-color: var(--border-bright);
+    color: var(--muted);
+  }
+  .btn-secondary:hover { border-color: var(--text); color: var(--text); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Success screen */
+  .success-icon {
+    width: 64px; height: 64px;
+    border: 2px solid var(--success);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 24px;
+    font-size: 28px;
+    color: var(--success);
+  }
+
+  .section-title {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+    margin-top: 24px;
+  }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .pill {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    padding: 2px 8px;
+    border: 1px solid var(--success);
+    color: var(--success);
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  .time-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .optional-badge {
+    display: inline-block;
+    font-size: 9px;
+    padding: 1px 6px;
+    border: 1px solid var(--muted);
+    color: var(--muted);
+    margin-left: 8px;
+    vertical-align: middle;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="header">
+    <div class="tag">Open Source Tool</div>
+    <h1>AirGarage<br><span>Auto-Parking</span> Setup</h1>
+    <p>Automate your daily parking session using GitHub Actions + cron-job.org. Free, reliable, runs to the minute.</p>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-wrap" id="progress">
+    <div class="progress-step active" data-s="0">
+      <div class="p-dot">1</div>
+      <div class="p-label">Session ID</div>
+    </div>
+    <div class="progress-step" data-s="1">
+      <div class="p-dot">2</div>
+      <div class="p-label">Spot ID</div>
+    </div>
+    <div class="progress-step" data-s="2">
+      <div class="p-dot">3</div>
+      <div class="p-label">Your Details</div>
+    </div>
+    <div class="progress-step" data-s="3">
+      <div class="p-dot">4</div>
+      <div class="p-label">GitHub Setup</div>
+    </div>
+    <div class="progress-step" data-s="4">
+      <div class="p-dot">5</div>
+      <div class="p-label">Cron Setup</div>
+    </div>
+    <div class="progress-step" data-s="5">
+      <div class="p-dot">✓</div>
+      <div class="p-label">Done</div>
+    </div>
+  </div>
+
+  <!-- Step 1: Session ID -->
+  <div class="step active" id="step-0">
+    <div class="card">
+      <div class="step-header">
+        <div class="step-num">01</div>
+        <div class="step-header-text">
+          <h2>Find Your Session ID</h2>
+          <p>The session ID authenticates requests to AirGarage on your behalf. You grab it once from your browser.</p>
+        </div>
+      </div>
+
+      <ol class="instr-list">
+        <li>Open <a href="https://pay.airgarage.com" target="_blank">pay.airgarage.com</a> in Chrome and log in to your account</li>
+        <li>Open DevTools: press <code>F12</code> or right-click → Inspect</li>
+        <li>Go to the <strong>Application</strong> tab → <strong>Cookies</strong> → <code>https://pay.airgarage.com</code></li>
+        <li>Find the cookie named <code>sessionid</code> and copy its value</li>
+      </ol>
+
+      <div class="callout warn">
+        <strong>Heads up:</strong> Session IDs can expire when you log out or after extended inactivity. If the automation stops working, repeat this step to grab a fresh one.
+      </div>
+
+      <div class="field" style="margin-top:20px">
+        <label>Session ID</label>
+        <div class="hint">Paste the value of the <code>sessionid</code> cookie here</div>
+        <input type="text" id="session_id" placeholder="e.g. abc123xyz..." autocomplete="off">
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="next(0)">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Spot ID -->
+  <div class="step" id="step-1">
+    <div class="card">
+      <div class="step-header">
+        <div class="step-num">02</div>
+        <div class="step-header-text">
+          <h2>Find Your Spot ID</h2>
+          <p>Each AirGarage location has a unique numeric spot ID. You'll find it in the network request when you start a session.</p>
+        </div>
+      </div>
+
+      <ol class="instr-list">
+        <li>Go to <a href="https://pay.airgarage.com" target="_blank">pay.airgarage.com</a> and navigate to your parking location</li>
+        <li>Open DevTools → <strong>Network</strong> tab. Check <strong>Preserve log</strong></li>
+        <li>Start a parking session (don't worry — you can cancel it immediately)</li>
+        <li>In the Network tab, find the <code>POST</code> request to <code>/api/slots</code></li>
+        <li>Click it → <strong>Payload</strong> tab → look for <code>"spot": XXXX</code> — that number is your spot ID</li>
+      </ol>
+
+      <div class="callout">
+        <strong>Tip:</strong> Your spot ID is tied to the specific parking lot, not your account. Everyone at the same location uses the same spot ID.
+      </div>
+
+      <div class="field" style="margin-top:20px">
+        <label>Spot ID</label>
+        <div class="hint">The numeric value from the <code>"spot"</code> field in the API payload</div>
+        <input type="number" id="spot_id" placeholder="e.g. 1229">
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="prev(1)">← Back</button>
+        <button class="btn btn-primary" onclick="next(1)">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Your Details -->
+  <div class="step" id="step-2">
+    <div class="card">
+      <div class="step-header">
+        <div class="step-num">03</div>
+        <div class="step-header-text">
+          <h2>Your Details</h2>
+          <p>Enter your vehicle and account info. This gets stored securely as GitHub Secrets — never in plain code.</p>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>License Plate</label>
+          <input type="text" id="plate" placeholder="e.g. 8ABC123" style="text-transform:uppercase">
+        </div>
+        <div class="field">
+          <label>State</label>
+          <input type="text" id="plate_state" placeholder="e.g. CA" maxlength="2" style="text-transform:uppercase">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Phone Number</label>
+        <div class="hint">Digits only, no country code (e.g. <code>4155551234</code>)</div>
+        <input type="tel" id="phone" placeholder="e.g. 4155551234">
+      </div>
+
+      <div class="field">
+        <label>Promo Code <span class="optional-badge">Optional</span></label>
+        <div class="hint">If you have a discount code, enter it here. The script will try it first and fall back to no promo.</div>
+        <input type="text" id="promo" placeholder="e.g. EQN120" style="text-transform:uppercase">
+      </div>
+
+      <div class="section-title">Schedule (Mon–Fri)</div>
+      <div class="time-row">
+        <div class="field">
+          <label>Start Time</label>
+          <div class="hint">When to begin parking (your local time)</div>
+          <input type="time" id="start_time" value="07:15">
+        </div>
+        <div class="field">
+          <label>End Time</label>
+          <div class="hint">When to end parking (your local time)</div>
+          <input type="time" id="end_time" value="09:10">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Your Timezone</label>
+        <select id="timezone">
+          <option value="America/Los_Angeles">Pacific (PT) — Los Angeles, SF</option>
+          <option value="America/Denver">Mountain (MT) — Denver, Phoenix</option>
+          <option value="America/Chicago">Central (CT) — Chicago, Dallas</option>
+          <option value="America/New_York">Eastern (ET) — New York, Miami</option>
+        </select>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="prev(2)">← Back</button>
+        <button class="btn btn-primary" onclick="next(2)">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4: GitHub Setup -->
+  <div class="step" id="step-3">
+    <div class="card">
+      <div class="step-header">
+        <div class="step-num">04</div>
+        <div class="step-header-text">
+          <h2>GitHub Setup</h2>
+          <p>Fork the repo and add these secrets. The workflow reads them at runtime — nothing sensitive in your code.</p>
+        </div>
+      </div>
+
+      <ol class="instr-list">
+        <li>Fork the repo: <a href="https://github.com/kyukim-sf/AirGarage" target="_blank">github.com/kyukim-sf/AirGarage</a> → click <strong>Fork</strong> (top right)</li>
+        <li>In your fork, go to <strong>Settings → Secrets and variables → Actions</strong></li>
+        <li>Click <strong>New repository secret</strong> and add each secret below</li>
+      </ol>
+
+      <div class="section-title">Secrets to Add</div>
+      <div id="secrets-list"></div>
+
+      <div class="callout">
+        <strong>Enable Actions:</strong> After forking, go to the <strong>Actions</strong> tab in your repo and click "I understand my workflows, go ahead and enable them."
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="prev(3)">← Back</button>
+        <button class="btn btn-primary" onclick="next(3)">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 5: Cron Setup -->
+  <div class="step" id="step-4">
+    <div class="card">
+      <div class="step-header">
+        <div class="step-num">05</div>
+        <div class="step-header-text">
+          <h2>cron-job.org Setup</h2>
+          <p>This triggers your GitHub workflow at the exact right time, bypassing GitHub's unreliable scheduler.</p>
+        </div>
+      </div>
+
+      <ol class="instr-list">
+        <li>Create a free account at <a href="https://console.cron-job.org/signup" target="_blank">console.cron-job.org</a></li>
+        <li>Create a GitHub Personal Access Token with only the <code>workflow</code> scope at <a href="https://github.com/settings/tokens/new" target="_blank">github.com/settings/tokens/new</a></li>
+        <li>Create <strong>two</strong> cron jobs using the settings below</li>
+      </ol>
+
+      <div class="section-title">Job 1 — Start Parking</div>
+      <div id="cron-start"></div>
+
+      <div class="section-title" style="margin-top:28px">Job 2 — End Parking</div>
+      <div id="cron-end"></div>
+
+      <div class="callout warn">
+        <strong>For both jobs:</strong> Set Request Method to <code>POST</code>, add headers <code>Authorization: Bearer YOUR_TOKEN</code>, <code>Accept: application/vnd.github.v3+json</code>, and <code>Content-Type: application/json</code>. Timezone: your local timezone.
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="prev(4)">← Back</button>
+        <button class="btn btn-primary" onclick="next(4)">Done ✓</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 6: Done -->
+  <div class="step" id="step-5">
+    <div class="card" style="text-align:center; padding: 48px 32px;">
+      <div class="success-icon">✓</div>
+      <h2 style="font-family:'Syne',sans-serif; font-size:24px; font-weight:800; margin-bottom:12px;">You're all set!</h2>
+      <p style="font-size:13px; color:var(--muted); line-height:1.7; max-width:440px; margin:0 auto 32px;">
+        Your parking will now start and end automatically every weekday. Check your GitHub Actions tab after the first scheduled run to confirm everything worked.
+      </p>
+      <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+        <a href="https://github.com/kyukim-sf/AirGarage/actions" target="_blank">
+          <button class="btn btn-primary">View GitHub Actions</button>
+        </a>
+        <button class="btn btn-secondary" onclick="restart()">Start Over</button>
+      </div>
+
+      <div class="callout" style="margin-top:32px; text-align:left;">
+        <strong>Test it now:</strong> Go to GitHub Actions → AirGarage Parking Automation → Run workflow → choose <code>start</code> → confirm it works in the logs. Then run <code>end</code> to close the session.
+      </div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+  let currentStep = 0;
+  const totalSteps = 6;
+
+  function getVal(id) {
+    return (document.getElementById(id)?.value || '').trim();
+  }
+
+   function timeToCron(timeStr, timezone) {
+    // Convert local time to UTC for cron
+    const [h, m] = timeStr.split(':').map(Number);
+    const offsets = {
+      'America/Los_Angeles': 8,
+      'America/Denver': 7,
+      'America/Chicago': 6,
+      'America/New_York': 5
+    };
+    // Note: cron-job.org supports timezone natively, so we just return the local time
+    return `${m} ${h} * * 1-5`;
+  }
+
+  function renderSecrets() {
+    const plate = getVal('plate').toUpperCase();
+    const state = getVal('plate_state').toUpperCase();
+    const phone = getVal('phone');
+    const promo = getVal('promo').toUpperCase();
+    const spotId = getVal('spot_id');
+    const sessionId = getVal('session_id');
+
+    const secrets = [
+      { key: 'AIRGARAGE_SESSION_ID', val: sessionId || '(your session id)' },
+      { key: 'AIRGARAGE_SPOT_ID', val: spotId || '(your spot id)' },
+      { key: 'AIRGARAGE_PLATE', val: plate || '(your plate)' },
+      { key: 'AIRGARAGE_PLATE_STATE', val: state || '(your state)' },
+      { key: 'AIRGARAGE_PHONE', val: phone || '(your phone)' },
+    ];
+    if (promo) secrets.push({ key: 'AIRGARAGE_PROMO_CODE', val: promo });
+
+    const el = document.getElementById('secrets-list');
+    el.innerHTML = secrets.map(s => `
+      <div class="secret-row">
+        <div class="secret-key">${s.key}</div>
+        <div class="secret-val">${s.val}</div>
+        <button class="secret-copy" onclick="copyText(this, '${s.val}')">Copy</button>
+      </div>
+    `).join('');
+  }
+
+  function renderCron() {
+    const startTime = getVal('start_time') || '07:15';
+    const endTime = getVal('end_time') || '09:10';
+    const tz = getVal('timezone') || 'America/Los_Angeles';
+    const startCron = timeToCron(startTime, tz);
+    const endCron = timeToCron(endTime, tz);
+
+    const url = 'https://api.github.com/repos/YOUR_GITHUB_USERNAME/AirGarage/actions/workflows/parking.yml/dispatches';
+
+    document.getElementById('cron-start').innerHTML = `
+      <div class="secret-row"><div class="secret-key">URL</div><div class="secret-val" style="font-size:11px">${url}</div><button class="secret-copy" onclick="copyText(this, '${url}')">Copy</button></div>
+      <div class="secret-row"><div class="secret-key">Cron Expression</div><div class="secret-val">${startCron}</div><button class="secret-copy" onclick="copyText(this, '${startCron}')">Copy</button></div>
+      <div class="secret-row"><div class="secret-key">Timezone</div><div class="secret-val">${tz}</div><button class="secret-copy" onclick="copyText(this, '${tz}')">Copy</button></div>
+      <div class="secret-row"><div class="secret-key">Request Body</div><div class="secret-val" style="font-size:11px">{"ref":"main","inputs":{"action":"start"}}</div><button class="secret-copy" onclick='copyText(this, JSON.stringify({ref:"main",inputs:{action:"start"}}))'>Copy</button></div>
+    `;
+
+    document.getElementById('cron-end').innerHTML = `
+      <div class="secret-row"><div class="secret-key">URL</div><div class="secret-val" style="font-size:11px">${url}</div><button class="secret-copy" onclick="copyText(this, '${url}')">Copy</button></div>
+      <div class="secret-row"><div class="secret-key">Cron Expression</div><div class="secret-val">${endCron}</div><button class="secret-copy" onclick="copyText(this, '${endCron}')">Copy</button></div>
+      <div class="secret-row"><div class="secret-key">Timezone</div><div class="secret-val">${tz}</div><button class="secret-copy" onclick="copyText(this, '${tz}')">Copy</button></div>
+      <div class="secret-row"><div class="secret-key">Request Body</div><div class="secret-val" style="font-size:11px">{"ref":"main","inputs":{"action":"end"}}</div><button class="secret-copy" onclick='copyText(this, JSON.stringify({ref:"main",inputs:{action:"end"}}))'>Copy</button></div>
+    `;
+  }
+
+  function copyText(btn, text) {
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 2000);
+    });
+  }
+
+  function validate(step) {
+    if (step === 0 && !getVal('session_id')) { alert('Please enter your Session ID'); return false; }
+    if (step === 1 && !getVal('spot_id')) { alert('Please enter your Spot ID'); return false; }
+    if (step === 2) {
+      if (!getVal('plate')) { alert('Please enter your license plate'); return false; }
+      if (!getVal('plate_state')) { alert('Please enter your state'); return false; }
+      if (!getVal('phone')) { alert('Please enter your phone number'); return false; }
+    }
+    return true;
+  }
+
+  function next(step) {
+    if (!validate(step)) return;
+    if (step === 2) renderSecrets();
+    if (step === 3) renderCron();
+    goTo(step + 1);
+  }
+
+  function prev(step) { goTo(step - 1); }
+
+  function goTo(n) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById('step-' + n).classList.add('active');
+    document.querySelectorAll('.progress-step').forEach((s, i) => {
+      s.classList.toggle('active', i === n);
+      s.classList.toggle('done', i < n);
+    });
+    currentStep = n;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function restart() { goTo(0); }
+</script>
+</body>
+</html>
