@@ -11,7 +11,7 @@ function startParking(promoCode) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
       source: 'webpay3',
-      cars_list: [{ plate: '8GAC911', state: 'CA', country: 'US' }],
+      cars_list: [{ plate: 'EP89B37', state: 'CA', country: 'US' }],
       username: '+17036789502',
       phone_country_code: '+1',
       phone: '7036789502',
